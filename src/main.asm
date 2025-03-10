@@ -39,10 +39,10 @@ START:
 
 ; EXIT or SEMICOLON
 ; POP RSP -> IP
-; goes directly into WORD_NEXT
+; Continues into WORD_NEXT
 WORD_EXIT:
-    dw   $+2
-    ld   c,(ix+0)
+    dw   $+2        ; Code Address
+    ld   c,(ix+0)   ; Code
     inc  ixl        
     ld   b,(ix+0)
     inc  ixl
@@ -50,26 +50,26 @@ WORD_EXIT:
 ; NEXT WORD
 ; (IP) -> W
 ; IP+2 -> IP
-; Goes directly into WORD_RUN
+; Continues into WORD_RUN
 WORD_NEXT:
     ld   a,(bc)
     ld   l,a
     inc  bc
-    ld   a,(bc)
-    ld   h,a
-    inc  bc
+    ld   a,(bc) ; currently W is in HL
+    ld   h,a    ; but that is only temporal
+    inc  bc     ; RUN will change that to DE
 
 ; RUN WORD
-; (W) -> X
+; (W (HL)) -> X (DE)
 ; W+2 -> W
 ; JP (X)
 WORD_RUN:
-    ld   e,(hl)
+    ld   e,(hl) 
     inc  hl
     ld   d,(hl)
     inc  hl
-    ex   de,hl
-    jp   (hl)   ; jump to address in X
+    ex   de,hl  ; jump to address in X
+    jp   (hl)   ; leave in DE the value of IP
 
 ; ENTER or DOCOLON
 ; PUSH IP -> RSP
@@ -85,7 +85,7 @@ WORD_ENTER:
     jr   WORD_NEXT
 
 ; EXECUTE
-    db  7,'E','X','E'
+    db  7,"EXECUTE"
     dw  &0000
 WORD_EXECUTE:
     dw   $+2
