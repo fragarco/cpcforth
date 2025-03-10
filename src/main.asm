@@ -86,7 +86,7 @@ WORD_ENTER:
 
 ; EXECUTE
     db  7,'E','X','E'
-    dw  &00
+    dw  &0000
 WORD_EXECUTE:
     dw   $+2
     pop  hl
@@ -113,7 +113,7 @@ WORDS_LATEST: dw &0000
 dw   &FFFF
 db   &F3
 db   "DUP"
-db   $+2
+dw   $+2
 pop  hl
 push hl
 push hl
@@ -125,7 +125,7 @@ jp   WORD_NEXT
 dw   &FFFF
 db   &F8
 db   "CONSTANT"
-db   WORD_ENTER
+dw   WORD_ENTER
 dw   &FFFF   ; CREATE
 dw   &FFFF   ; ,
 dw   &FFFF   ; SCODE
