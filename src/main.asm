@@ -23,25 +23,38 @@
 ; Threaded Interpretive Langiages By R.G. Loeliger
 ; ISBN 0-07-038360-X, 1981 BYTE Publications Inc.
 
+org &3F00
+
 ; This Forth implementation uses the following register assignments:
 ; W     DE  - Working Register    
 ; IP    BC  - Interpreter Pointer
 ; PSP   SP  - Parameter Stack Pointer
 ; RSP   IX  - Return Stack Pointer but we will use only the low byte IXL
-	
-org &4000
 
+; MACRO WORD HEADER
+; Each Forth word includes a header with the following format:
+; HEADER:
+;    2 bytes: addr to previous word
+;    1 bytes: 3 bits for flags + 5 bits name length
+;    n bytes: word name (1-32) characters
+macro W_HEADER _NAME_,_FLAGS_LEN_,_PREV_,_CAADDR_ 
+    dw _PREV_       ; Address to previous work in the dictionary
+    db _FLAGS_LEN_  ; Word's flags + name length
+    db _NAME_       ; Word's name
+endm
+
+; RSP STACK
 ; will go down from &4000 to 3F01 (128 16 bit values)
-RSP_STACK:
-
-START:
-    ld   ix,RSP_STACK
+defs 256
+RSP_STACK_START:
+    ld   ix,RSP_STACK_START
 
 ; EXIT or SEMICOLON
 ; POP RSP -> IP
 ; Continues into WORD_NEXT
-WORD_EXIT:
+EXIT_ADDR:
     dw   $+2        ; Code Address
+EXIT_CODE:
     ld   c,(ix+0)   ; Code
     inc  ixl        
     ld   b,(ix+0)
@@ -51,7 +64,7 @@ WORD_EXIT:
 ; (IP) -> W
 ; IP+2 -> IP
 ; Continues into WORD_RUN
-WORD_NEXT:
+NEXT_CODE:
     ld   a,(bc)
     ld   l,a
     inc  bc
@@ -63,7 +76,7 @@ WORD_NEXT:
 ; (W (HL)) -> X (DE)
 ; W+2 -> W
 ; JP (X)
-WORD_RUN:
+RUN_CODE:
     ld   e,(hl) 
     inc  hl
     ld   d,(hl)
@@ -75,65 +88,49 @@ WORD_RUN:
 ; PUSH IP -> RSP
 ; W -> IP
 ; JP NEXT
-WORD_ENTER:
+ENTER_CODE:
     dec  ixl
     ld   (ix+0),b
     dec  ixl
     ld   (ix+0),c
     ld   c,e
     ld   b,d
-    jr   WORD_NEXT
-
-; EXECUTE
-    db  7,"EXECUTE"
-    dw  &0000
-WORD_EXECUTE:
-    dw   $+2
-    pop  hl
-    jr   WORD_RUN
-
+    jr   NEXT_CODE
 
 
 ;
 ; LIST OF WORDS
 ;
-; Each available Forth word is stored in this list
-; HEADER:
-;    2 bytes: addr to previous word
-;    1 bytes: 4 bits name len, 4 bits for flags
-;    n bytes: word name (1-15) characters
+; Each available Forth word is stored in this list with the following
+; format:
+; HEADER        varies
+; CODE ADDRESS  2 bytes
+; CODE PARAMS   varis  (optional)
+; CODE          varies (optional)
 
 ; Pointer to the lastes defined word
 WORDS_LATEST: dw &0000
+
+W_EXECUTE:
+W_HEADER "EXECUTE",&07,&0000
+W_EXECUTE_ADDR:
+    dw   $+2
+W_EXECUTE_CODE:
+    pop  hl
+    jr   RUN_CODE
+
 
 ;DUP
 ; POP PSP -> X
 ; PUSH X -> PSP
 ; PUSH X -> PSP
-dw   &FFFF
-db   &F3
-db   "DUP"
-dw   $+2
-pop  hl
-push hl
-push hl
-jp   WORD_NEXT
+W_DUP:
+W_HEADER "DUP",&03,W_EXECUTE
+W_DUP_ADDR:
+    dw   $+2
+W_DUP_CODE:
+    pop  hl
+    push hl
+    push hl
+    jp   NEXT_CODE
 
-;CONSTANT
-; (W) -> X
-; PUSH X -> PSP
-dw   &FFFF
-db   &F8
-db   "CONSTANT"
-dw   WORD_ENTER
-dw   &FFFF   ; CREATE
-dw   &FFFF   ; ,
-dw   &FFFF   ; SCODE
-ex   de,hl
-ld   e,(hl)
-inc  hl
-ld   d,(hl)
-inc  hl
-ex   de,hl
-push hl
-jp   WORD_NEXT
